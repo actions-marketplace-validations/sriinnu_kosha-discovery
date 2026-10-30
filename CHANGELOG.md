@@ -13,11 +13,54 @@ is tracked separately via `DISCOVERY_SCHEMA_VERSION` (v1 as of 0.8.0).
 
 ## [Unreleased]
 
+## [1.10.0] — 2026-10-30
+
+### Added
+
+- **A switch for where keyless catalog data comes from.**
+  `KOSHA_CATALOG_SOURCE` (or `catalogSource` in `~/.kosharc.json`) picks
+  `community` (models.dev + LiteLLM, the default), `pinned` (kosha's own
+  weekly snapshot only) or `local` (a file, no network). `local` fails closed:
+  a missing or broken file is an error, never a quiet fallback to the network.
+  See [Catalog Source](docs/configuration.md#catalog-source).
+- **`kosha registry export`** writes the current catalog in the snapshot's
+  format, ready to use as a `local` catalog.
+- **`kosha doctor` shows the catalog source** and how old the catalog is.
+
+### Security
+
+- **A $0 price from a catalog can no longer win routing or slip past a budget.**
+  The catalogs are the only source for most prices, so a compromised one could
+  set an expensive model to $0. `kosha:cheapest` would then route everything
+  there, and the ledger would record the real spend as free.
+  - Under a budget, the proxy treats a remote $0/$0 price as unpriced.
+  - Selectors try catalog-only $0 routes last.
+  - The manifest's price-move quarantine now catches a priced model dropping to
+    $0, which it used to skip as a placeholder.
+  - Local runtimes and OpenRouter `:free` ids are unaffected. Other genuinely
+    free remote models lose their top ranking until cross-source checks can
+    confirm them.
+- **`kosha.config.json` can no longer supply API keys.** That file comes with
+  any repo you run kosha in, and a key there would route your prompts through
+  the repo author's account. It also cannot set `catalogFile`, or set any
+  catalog source other than `pinned`.
+
 ### Changed
 
-- **The release workflow rehearses `npm publish` before asking for approval.**
-  `verify` dry-runs the publish job's exact command on the exact tarball, so a
-  broken publish line fails before the `npm-release` gate, not after it.
+- **The CLI, the MCP server and `kosha serve` now read `~/.kosharc.json` and
+  `kosha.config.json`.** Before, only `createKosha()` did, and the binaries
+  saw env vars alone.
+- **The weekly snapshot carries `schemaVersion` and `kind`.** Loaders accept
+  older snapshots without them, and refuse a different kind or an unknown
+  version.
+- **npm releases are staged, then approved by a maintainer with 2FA.** CI
+  runs `npm stage publish` through trusted publishing, with no npm token
+  anywhere. The version goes live only when a maintainer runs
+  `npm stage approve`. 1.10.0 is the first release to ship this way.
+- **The release workflow rehearses the stage step before asking for approval.**
+  `verify` dry-runs `npm stage publish` with the same npm, on the same unpacked
+  tarball, so a broken publish line or an unbumped version fails before the
+  `npm-release` gate, not after it.
 
 ## [1.9.1] — 2026-10-29
 

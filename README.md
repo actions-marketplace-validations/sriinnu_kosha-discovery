@@ -246,6 +246,8 @@ compare prices across them directly.
 
 Without a key, providers fall back to the public models.dev + LiteLLM catalog, then to kosha's own weekly [snapshot](#public-snapshot) if those are unreachable, then to a curated static list, so `kosha list` works on a fresh machine. The same fallback applies when a key is present but rejected: the provider stays listed from the public catalog, shows as unauthenticated, and the error is kept for `kosha doctor`. Exact env var names: [docs/credentials.md](docs/credentials.md).
 
+To take models.dev and LiteLLM out of the loop, set `KOSHA_CATALOG_SOURCE=pinned` (kosha's snapshot only) or `local` (a file from `kosha registry export`, no network). See [Catalog Source](docs/configuration.md#catalog-source).
+
 ### Non-chat modes
 
 Most models are `chat`, but `mode` also covers `embedding`, `image`, `video`,
@@ -359,7 +361,13 @@ git tag -s vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z
 gh workflow run release-npm.yml -f tag=vX.Y.Z
 ```
 
-The workflow checks that the tag matches `package.json`, runs lint / build / test, publishes to npm with provenance, and creates the GitHub Release. Publishing authenticates through npm trusted publishing (OIDC) when a trusted publisher is configured for this repo and workflow on npmjs.com, or through an `NPM_TOKEN` repository secret.
+The workflow checks that the tag matches `package.json`, runs lint / build / test, stages the package on npm with provenance, and creates the GitHub Release. Staging authenticates through npm trusted publishing (OIDC); there is no npm token. The version goes live only after a maintainer approves it with 2FA:
+
+```bash
+npm stage list @sriinnu/kosha-discovery
+npm stage approve <id>
+gh workflow run release-npm.yml -f tag=vX.Y.Z -f publish_npm=false -f create_github_release=false   # then publish to the MCP registry
+```
 
 ## Support
 
